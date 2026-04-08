@@ -57,15 +57,13 @@ pip install -r requirements.txt
 **Step 1: Ingest and Vectorize Documents**
 Place your academic notes (e.g., `.pdf` files) in the input directory. Then, run the data pipeline to semantically chunk the text and build the ChromaDB vector store:
 ```bash
-python src/embedding.py
+python RAG.py
 ```
-*This will create a persistent embeddings directory.*
+*This file ask you if want convert the files in the directory_in  in to text, next take this text files and create a persistent embeddings directory.*
 
 **Step 2: Start the Chat Assistant**
-Once the database is ready, launch the conversational interface:
-```bash
-python src/chat_with_RAG.py
-```
+Once the database is ready, launch the conversational interface in Visual Studio Code
+
 
 ## Project Structure
 
