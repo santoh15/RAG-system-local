@@ -1,36 +1,40 @@
 # Offline Academic RAG System
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
+![Streamlit](https://img.shields.io/badge/UI-Streamlit-red.svg)
 ![LangChain](https://img.shields.io/badge/LangChain-Enabled-green)
 ![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector_Store-orange)
 ![Local_AI](https://img.shields.io/badge/AI-100%25_Offline-success)
 
 A 100% local, privacy-first Retrieval-Augmented Generation (RAG) system designed to process and query complex academic documents (Physics, Mathematics, and Computer Science). 
 
-This project orchestrates local Large Language Models (LLMs) and embedding models to create a conversational AI assistant that grounds its answers strictly on a custom offline knowledge base, preventing hallucinations while keeping all data private.
+This project orchestrates local Large Language Models (LLMs) and embedding models through an intuitive **Streamlit Web Interface**, creating a conversational AI assistant that grounds its answers strictly on a custom offline knowledge base, preventing hallucinations while keeping all data private.
 
 ## Key Features
 
+* **Interactive Web UI:** Fully integrated with **Streamlit**, providing a clean interface to manage file paths, select models, and chat with your documents dynamically.
 * **100% Offline & Private:** No API keys, no cloud dependencies, no data leaks. Everything runs locally on consumer hardware.
-* **Semantic Chunking:** Unlike traditional character-based splitters, this pipeline uses `sentence-transformers` to split texts semantically, preserving the coherence of mathematical theorems, proofs, and complex academic context.
-* **Optimized Hardware Usage:** Leverages CPU/RAM for the embedding generation (BGE-M3) to free up VRAM, allowing heavier LLMs (like Qwen or Llama) to run concurrently on the GPU via LM Studio.
+* **Real-time LLM Streaming:** The chat interface features word-by-word streaming responses (`yield`), providing a fast and fluid user experience similar to ChatGPT or Claude.
+* **Semantic & Recursive Chunking:** Choose between character-based or semantic splitters (via `sentence-transformers`) directly from the UI, preserving the coherence of mathematical theorems, proofs, and complex academic context.
+* **Optimized Memory Management:** The app manages VRAM intelligently via `LM Studio CLI` commands, allowing the concurrent coexistence of the embedding model (for fast context retrieval) and the conversational LLM.
 * **Conversational Memory:** Implements a sliding window memory system to allow contextual follow-up questions without overflowing the LLM's context window.
-* **Hybrid Prompting:** Configurable system prompts to act as a strict document retriever or a hybrid academic tutor.
 
 ## Architecture & Tech Stack
 
-1. **Document Ingestion:** Reads local `.txt`, images or `.pdf` files.
-2. **Embedding & Chunking:** `HuggingFaceEmbeddings` (BAAI/bge-m3) running natively via `sentence-transformers`.
-3. **Vector Database:** `ChromaDB` for persistent, on-disk semantic search.
-4. **LLM Inference:** `LM Studio` local server API (OpenAI drop-in replacement).
-5. **Orchestration:** `LangChain` & `LangChain-HuggingFace`.
+1. **Frontend:** `Streamlit` for UI and state management (`st.session_state`).
+2. **Document Ingestion:** Reads local `.txt`, images or `.pdf` files.
+3. **Embedding & Chunking:** `HuggingFaceEmbeddings` (BAAI/bge-m3) running natively.
+4. **Vector Database:** `ChromaDB` for persistent, on-disk semantic search.
+5. **LLM Inference:** `LM Studio` local server API (OpenAI drop-in replacement).
+6. **Orchestration:** `LangChain` & `LangChain-HuggingFace`.
 
 ---
 
 ## Prerequisites
 
 * Python 3.10 or higher.
-* [LM Studio](https://lmstudio.ai/) installed.
+* [LM Studio](https://lmstudio.ai/) installed and running in the background.
+* The `lms` CLI tool enabled in LM Studio.
 * At least 16GB of RAM (32GB recommended for running embeddings + LLM simultaneously).
 
 ## Installation & Setup
@@ -47,50 +51,46 @@ pip install -r requirements.txt
 ```
 
 **3. Set up LM Studio**
-* Open LM Studio and navigate to the **Local Server** tab.
-* Load your preferred LLM (e.g., `Qwen-30B-Coder` or `Llama-3`).
-* Ensure the server is running on `http://localhost:1234/v1`.
-* *(Note: The embedding model `BGE-M3` is handled natively by the Python script using your CPU/RAM, so you only need to load the text generation model in LM Studio).*
+* Open the **LM Studio** desktop application.
+* Ensure you have downloaded your preferred text generation models (e.g., `Qwen-30B-Coder`, `Llama-3`) and a vision/embedding model (e.g., `text-embedding-bge-m3`).
+* The Python script will automatically manage the server startup and model loading via CLI (`lms load`).
 
 ## 🏃‍♂️ Usage
 
-**Step 1: Ingest and Vectorize Documents**
-Place your academic notes (e.g., `.pdf` files) in the input directory. Then, run the data pipeline to semantically chunk the text and build the ChromaDB vector store:
+To start the graphical interface, run the following command in your terminal:
+
 ```bash
-python RAG.py
+streamlit run app.py
 ```
-*This file ask you if want convert the files in the directory_in  in to text, next take this text files and create a persistent embeddings directory.*
 
-**Step 2: Start the Chat Assistant**
-Once the database is ready, launch the conversational interface in Visual Studio Code
-
+**Workflow inside the App:**
+1. **Configure Paths:** In the sidebar, enter the absolute paths for your Input directory (where your PDFs live) and Output directory (where text and ChromaDB will be saved).
+2. **Process Documents:** If new files are detected, select a vision model and a chunking method, then click **Process**. The system will vectorize the documents and update the database.
+3. **Start Chatting:** Select your conversational RAG model and click **Load Vector Store and Model**. 
+4. Ask complex academic questions in the main chat window and watch the streaming response based on your documents!
 
 ## Project Structure
 
 ```text
+├── app.py                         # Streamlit Main UI & Application Logic
 ├── src/
 │   ├── chunking.py                # Semantic or recursive Chunking logic
-│   ├── chat_with_RAG.py           # Conversational loop and memory management
-│   ├── chat_bot.py                # Load the models and start or close the LM Studio server
-│   ├── embedding.py               # Load the embedding model and create a vectorial database
+│   ├── chat_with_RAG.py           # Streaming LLM consult and memory management
+│   ├── chat_bot.py                # LM Studio server/CLI commands wrapper
+│   ├── embedding.py               # Chroma vector store creation and loading
 │   ├── pdf_image_txt_converter.py # Extract and convert PDFs and images to plain text
 │   └── features.py                # Helper functions to process images and PDFs
-├── dir_in/                        # Directory for your raw image/PDF files (Not tracked by Git)
-│   └── dir_out/                   # Directory for extracted .txt files
-│       ├── embeddings/            # Directory to save the vector database (Created automatically)
-│       └── chunks_for_embedding/  # Directory to save text chunks in JSON (Created automatically)
 ├── requirements.txt               # Python dependencies
 ├── .gitignore
 └── README.md
 ```
+*(Note: Input and Output directories are now dynamically defined by the user through the Streamlit interface).*
 
 ## Roadmap & Future Work
 
-While the core RAG architecture and local LLM orchestration are fully functional, the following features are planned for future releases to improve accessibility and user experience:
-
-* **Graphical User Interface (GUI):** Transition from the current Command-Line Interface (CLI) to a responsive web-based chat interface (e.g., using **Streamlit** or **Gradio**).
-* **Dynamic File Management:** Implement a drag-and-drop document upload system within the UI. This will allow users to seamlessly ingest new PDFs or text files on the fly and update the ChromaDB vector store without needing to manually edit directory paths in the source code.
 * **Source Citations in UI:** Enhance the chat interface to visually display clickable references and snippets of the exact document chunks the LLM used to generate its answer.
+* **Advanced Document Parsing:** Improve the extraction of complex mathematical formulas and tables from PDFs before embedding.
+* **Multi-session Support:** Save and load previous chat histories natively within the Streamlit app.
 
 ## Author
 **Santiago Huck** - B.Sc. in Physics
