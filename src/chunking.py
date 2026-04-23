@@ -58,7 +58,7 @@ def chunking_text_semantic(text):
 
 
 
-def directory_chunk_to_json(dir_in):
+def directory_chunk_to_json(dir_in, choice):
     '''
     This function processes all the .txt files in a given directory, chunks the text using the chunking_text function,
     and saves the chunks in a JSON file whit the metadata of the original file.
@@ -76,10 +76,6 @@ def directory_chunk_to_json(dir_in):
         archives = os.listdir(dir_in)
         total_archives = len(archives)
         chunks_for_save = []
-        print('Choose the chunking method:')
-        print('1. Recursive')
-        print('2. Semantic')
-        choice = input('Enter your choice (1 or 2): ')
 
         for idx, name in enumerate(archives, 1):
             full_path = os.path.join(dir_in, name)

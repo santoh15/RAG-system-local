@@ -1,6 +1,7 @@
 import requests
 import os
 import subprocess
+import json
 from src.embedding import load_base_vectorial
 from src.chat_bot import start_server_lmstudio, close_server_lmstudio
 
@@ -21,14 +22,32 @@ def consult_llm_whith_memory(historial_mensajes, API_URL):
         "messages": historial_mensajes,
         "temperature": 0.3,
         "max_tokens": 4096,
-        "stream": False
+        "stream": True  # <--- ¡Clave! Cambiamos a True
     }
+    
     try:
-        answer = requests.post(API_URL, json=payload, timeout=600)
-        answer.raise_for_status()
-        return answer.json()['choices'][0]['message']['content'].strip()
+        # Hacemos la petición pidiendo el stream
+        respuesta = requests.post(API_URL, json=payload, stream=True, timeout=600)
+        respuesta.raise_for_status()
+
+        # Iteramos sobre las líneas que van llegando
+        for linea in respuesta.iter_lines():
+            if linea:
+                # Decodificamos la línea (LM Studio envía algo como: data: {"choices": [{"delta": {"content": "Hola"}}]})
+                linea_decodificada = linea.decode('utf-8')
+                
+                # Omitimos el prefijo "data: " y las líneas "[DONE]"
+                if linea_decodificada.startswith('data: ') and linea_decodificada != 'data: [DONE]':
+                    datos_json = json.loads(linea_decodificada[6:]) # Cortamos los primeros 6 caracteres ("data: ")
+                    
+                    # Extraemos el contenido si existe
+                    if 'choices' in datos_json and len(datos_json['choices']) > 0:
+                        delta = datos_json['choices'][0].get('delta', {})
+                        if 'content' in delta:
+                            yield delta['content']
+
     except Exception as e:
-        return f"Error to consult the LLM: {e}"
+        yield f"\n\n**Error al consultar el LLM:** {e}"
 
 
 
