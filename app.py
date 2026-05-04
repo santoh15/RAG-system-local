@@ -3,10 +3,10 @@ import os
 import subprocess
 from src.chunking import directory_chunk_to_json
 from src.pdf_image_txt_converter import extract_text_from_pdf
-from src.embedding import read_chunks_for_embedding, create_chroma_vector_store, load_base_vectorial
 from src.chat_bot import start_server_lmstudio, close_server_lmstudio
-from src.chat_whit_RAG import consult_llm_whith_memory
-
+from src.embedding import read_chunks_for_embedding, create_chroma_vector_store, load_base_vectorial
+from src.chat_whit_RAG import consult_llm_whith_memory, translate_query_to_english
+from src.advanced_retriever import build_advanced_retriever
 st.set_page_config(page_title="RAG Chatbot Local", layout="wide")
 
 
@@ -110,7 +110,11 @@ with st.sidebar:
         with st.spinner("Starting server and loading models..."):
             start_server_lmstudio(chat_model)
             subprocess.run(['lms', 'load', 'text-embedding-bge-m3'], shell=True) 
+            
             st.session_state.vector_store = load_base_vectorial(API_URL, st.session_state.path_out)
+            flat_documents = read_chunks_for_embedding(st.session_state.path_out)
+    
+            st.session_state.retriever = build_advanced_retriever(st.session_state.vector_store, flat_documents)
             
         st.success("✅ RAG System ready for chatting!")
 
@@ -129,27 +133,28 @@ for msg in st.session_state.messages:
 
 
 if prompt := st.chat_input("Type your question here..."):
-    if st.session_state.vector_store is None:
+    if not hasattr(st.session_state, 'retriever'):
         st.error("⚠️ Please load the vector store and model from the sidebar first.")
     else:
         with st.chat_message("user"):
             st.markdown(prompt)
     
-        with st.spinner("Searching in the documents..."):
-            results = st.session_state.vector_store.similarity_search(prompt, k=3)
+        with st.spinner("Translating query and searching documents (Hybrid + Re-Ranking)..."):
+            english_query = translate_query_to_english(prompt, API_URL)
+            st.caption(f"🔍 *Internal search (English): {english_query}*")
+            
+            results = st.session_state.retriever.invoke(english_query)
             context_made = "\n\n".join([doc.page_content for doc in results])
             
             user_message = f"""
             [Context]:{context_made}
             [Actual question]:{prompt}"""
 
-        
-        historial_temporal = st.session_state.messages.copy()
-        historial_temporal.append({"role": "user", "content": user_message})
+        temporal_history = st.session_state.messages.copy()
+        temporal_history.append({"role": "user", "content": user_message})
 
-        
         with st.chat_message("assistant"):
-            stream = consult_llm_whith_memory(historial_temporal, API_URL)
+            stream = consult_llm_whith_memory(temporal_history, API_URL)
             final_answer = st.write_stream(stream)
         
         st.session_state.messages.append({"role": "user", "content": prompt})

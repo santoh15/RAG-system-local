@@ -48,9 +48,6 @@ def consult_llm_whith_memory(historial_mensajes, API_URL):
 
     except Exception as e:
         yield f"\n\n**Error al consultar el LLM:** {e}"
-
-
-
 def start_chat(API_URL, dir_out):
     '''
     Starts the chat session with the RAG-enabled LLM.
@@ -115,9 +112,6 @@ def start_chat(API_URL, dir_out):
             historial_chat.pop(1)
     close_server_lmstudio()
     
-
-
-
 def decide_add_files_db(dir_in, dir_out):
     '''
     Checks if exists PDF files but not the corresponding .txt files in the output directory, which means that there are new files to add to the vector store database.
@@ -153,3 +147,41 @@ def decide_add_files_db(dir_in, dir_out):
                 return 'no'
         else:
             return 'no'
+
+def translate_query_to_english(query, API_URL):
+    """
+    Translates the user query from Spanish to English to optimize 
+    hybrid searching over English academic documents.
+    
+    Args:
+        query (str): The original user query in Spanish.
+        API_URL (str): The local LLM API endpoint.
+        
+    Returns:
+        str: The translated query in English.
+    """
+    system_prompt = """You are an expert translator specializing in Nuclear Physics and Mathematics. 
+Translate the following user query from Spanish to English. 
+ONLY output the English translation, nothing else. No introductions, no quotes."""
+    
+    payload = {
+        "model": "local-model",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"Query: {query}"}
+        ],
+        "temperature": 0.1,
+        "max_tokens": 100,
+        "stream": False
+    }
+    
+    import requests
+    try:
+        response = requests.post(API_URL, json=payload, timeout=60)
+        response.raise_for_status()
+        data = response.json()
+        translated_query = data['choices'][0]['message']['content'].strip()
+        return translated_query.replace('"', '').replace("'", "")
+    except Exception as e:
+        print(f"Translation Error: {e}")
+        return query
