@@ -22,25 +22,20 @@ def consult_llm_whith_memory(historial_mensajes, API_URL):
         "messages": historial_mensajes,
         "temperature": 0.3,
         "max_tokens": 4096,
-        "stream": True  # <--- ¡Clave! Cambiamos a True
+        "stream": True
     }
     
     try:
-        # Hacemos la petición pidiendo el stream
         respuesta = requests.post(API_URL, json=payload, stream=True, timeout=600)
         respuesta.raise_for_status()
 
-        # Iteramos sobre las líneas que van llegando
         for linea in respuesta.iter_lines():
             if linea:
-                # Decodificamos la línea (LM Studio envía algo como: data: {"choices": [{"delta": {"content": "Hola"}}]})
                 linea_decodificada = linea.decode('utf-8')
                 
-                # Omitimos el prefijo "data: " y las líneas "[DONE]"
                 if linea_decodificada.startswith('data: ') and linea_decodificada != 'data: [DONE]':
-                    datos_json = json.loads(linea_decodificada[6:]) # Cortamos los primeros 6 caracteres ("data: ")
+                    datos_json = json.loads(linea_decodificada[6:]) 
                     
-                    # Extraemos el contenido si existe
                     if 'choices' in datos_json and len(datos_json['choices']) > 0:
                         delta = datos_json['choices'][0].get('delta', {})
                         if 'content' in delta:
@@ -147,6 +142,38 @@ def decide_add_files_db(dir_in, dir_out):
                 return 'no'
         else:
             return 'no'
+
+def grade_retrieved_context(query, context, API_URL):
+    """
+    Evaluates if the retrieved context is relevant to the user's query.
+    
+    Returns:
+        str: 'yes' if relevant, 'no' if irrelevant.
+    """
+    system_prompt = """You are a grader assessing relevance of a retrieved document to a user question. 
+    If the document contains keyword(s) or semantic meaning related to the user question, grade it as relevant. 
+    Give a binary score 'yes' or 'no' score to indicate whether the document is relevant to the question.
+    ONLY output the word 'yes' or 'no'."""
+
+    user_content = f"Retrieved context: \n\n {context} \n\n User question: {query}"
+
+    payload = {
+        "model": "local-model",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content}
+        ],
+        "temperature": 0.0,
+        "max_tokens": 5
+    }
+
+    import requests
+    try:
+        response = requests.post(API_URL, json=payload, timeout=30)
+        grade = response.json()['choices'][0]['message']['content'].strip().lower()
+        return 'yes' if 'yes' in grade else 'no'
+    except:
+        return 'yes'
 
 def translate_query_to_english(query, API_URL):
     """

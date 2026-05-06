@@ -22,7 +22,7 @@ def read_chunks_for_embedding(dir_out):
     '''
     documents = []
     try:
-        json_path = os.path.join(dir_out, "chunks_for_embedding\\prepared_chunks.json")
+        json_path = os.path.join(dir_out, "chunks_for_embedding", "prepared_chunks.json")
         with open(json_path, "r", encoding="utf-8") as json_file:
             chunks_data = json.load(json_file)
             documents = [Document(page_content=chunk["content"], metadata=chunk["metadatos"]) for chunk in chunks_data]

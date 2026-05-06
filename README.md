@@ -92,8 +92,11 @@ streamlit run app.py
 ## Roadmap & Future Work
 
 * **Source Citations in UI:** Enhance the chat interface to visually display clickable references and snippets of the exact document chunks the LLM used to generate its answer.
-* **Advanced Document Parsing:** Improve the extraction of complex mathematical formulas and tables from PDFs before embedding.
-* **Multi-session Support:** Save and load previous chat histories natively within the Streamlit app.
+* **Automated Pipeline Evaluation:** Integrate frameworks like RAGAS or TruLens to systematically measure context precision, recall, and answer faithfulness (MLOps integration).
+* **Self-Reflective RAG (CRAG):** Implement a local evaluation loop where the LLM grades the retrieved context and automatically triggers query refinement if the information is insufficient.
+* **Agentic Math Execution:** Equip the LLM with a local Python REPL tool to dynamically compute equations, plot functions, and verify mathematical claims found in the documents.
+* **GraphRAG Integration:** Extract entities and relationships from academic papers to build a local Knowledge Graph, complementing the vector search for complex multi-hop reasoning.
+* **Academic Export Tools:** Add functionality to export chat sessions directly to LaTeX/Markdown formats and automatically generate BibTeX citations for the referenced chunks.
 
 ## Author
 **Santiago Huck** - B.Sc. in Physics

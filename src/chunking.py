@@ -42,7 +42,7 @@ def chunking_text_semantic(text):
     """
     embeddings_model = HuggingFaceEmbeddings(
         model_name="BAAI/bge-m3",
-        model_kwargs={'device': 'cpu'},
+        model_kwargs={},
         encode_kwargs={'normalize_embeddings': True}
     )
     chunker_semantico = SemanticChunker(
@@ -58,34 +58,45 @@ def chunking_text_semantic(text):
 
 
 
-def directory_chunk_to_json(dir_in, choice):
+def directory_chunk_to_json(dir_out, choice):
     '''
-    This function processes all the .txt files in a given directory, chunks the text using the chunking_text function,
-    and saves the chunks in a JSON file whit the metadata of the original file.
-    
+    This function processes all new .txt files in dir_out, chunks the text,
+    and appends them to the JSON file without repeating old ones.
     Args:
-        - dir_in: The directory containing the .txt files to be processed.
-    Returns:
-        - None (the function saves the output as JSON files in the same directory).
-
+        - dir_out: The directory where the .txt files are located and where the JSON will be saved.
+        - choice: The chunking method to use ('1' for recursive, '2' for semantic).
     '''
-    
     try:
-        print(f"The directory to load .txt files for chunking is: {dir_in}")
+        print(f"The directory to load .txt files for chunking is: {dir_out}")
         
-        archives = os.listdir(dir_in)
-        total_archives = len(archives)
+        archives = os.listdir(dir_out)
+        json_archive = os.path.join(dir_out, "chunks_for_embedding", "prepared_chunks.json")
+        
         chunks_for_save = []
+        processed_files = set()
+        
+        if os.path.exists(json_archive):
+            with open(json_archive, "r", encoding="utf-8") as f:
+                chunks_for_save = json.load(f)
+                for chunk in chunks_for_save:
+                    processed_files.add(chunk["metadatos"]["fuente"])
+            print(f"[*] Found {len(processed_files)} files already processed in the JSON.")
 
+        new_chunks_count = 0
+        
         for idx, name in enumerate(archives, 1):
-            full_path = os.path.join(dir_in, name)
+            full_path = os.path.join(dir_out, name)
             
-            if os.path.isdir(full_path):
+            if os.path.isdir(full_path) or not name.endswith('.txt'):
                 continue
-            print(f"\n[{idx}/{total_archives}] Processing: {name}...")
-            with open(full_path, 'r', encoding='utf-8') as f:
                 
+            if name in processed_files:
+                continue
+
+            print(f"\n[+] Processing NEW file: {name}...")
+            with open(full_path, 'r', encoding='utf-8') as f:
                 text = f.read()
+                
                 if choice == '1':
                     chunks = chunking_text_recursive(text)
                 elif choice == '2':
@@ -99,12 +110,16 @@ def directory_chunk_to_json(dir_in, choice):
                     chunks_for_save.append({
                         "content": doc.page_content,
                         "metadatos": doc.metadata
-                        })
-        json_archive_old = os.path.join(dir_in, "chunks_for_embedding\\prepared_chunks.json")
-        with open(json_archive_old, "w", encoding="utf-8") as archivo_json:
-            json.dump(chunks_for_save, archivo_json, ensure_ascii=False, indent=4)
+                    })
+                    new_chunks_count += 1
         
-
-        print(f"[✓] {len(chunks_for_save)} chunks saved in '{json_archive_old}'.")
+        if new_chunks_count > 0:
+            os.makedirs(os.path.dirname(json_archive), exist_ok=True)
+            with open(json_archive, "w", encoding="utf-8") as archivo_json:
+                json.dump(chunks_for_save, archivo_json, ensure_ascii=False, indent=4)
+            print(f"[✓] Added {new_chunks_count} new chunks. JSON updated in '{json_archive}'.")
+        else:
+            print("[✓] No new .txt files detected for processing.")
+            
     except Exception as e:
         print(f"  Error: {e}")

@@ -91,3 +91,46 @@ def close_server_lmstudio():
     subprocess.run(['lms', 'unload', '--all'], shell=True, stdout=subprocess.DEVNULL)
     subprocess.run(['lms', 'server', 'stop'], shell=True)
     print("Server turned off.")
+
+import subprocess
+import re
+
+import subprocess
+import re
+
+import subprocess
+import re
+
+def get_local_models():
+    """
+    Obtiene los nombres de los modelos (primera columna) de la salida de 'lms ls'.
+    """
+    try:
+        # Ejecutamos el comando lms ls
+        result = subprocess.run(['lms', 'ls'], capture_output=True, text=True, shell=True)
+        if result.returncode != 0:
+            return []
+        
+        lines = result.stdout.strip().split('\n')
+        models = []
+        
+        # Palabras que queremos ignorar porque son encabezados o texto informativo
+        ignore_list = ["LLM", "EMBEDDING", "PARAMS", "ARCH", "SIZE", "DEVICE", "You have", "---"]
+
+        for line in lines:
+            line = line.strip()
+            # Dividimos la línea por 2 o más espacios
+            parts = re.split(r'\s{2,}', line)
+            
+            if len(parts) > 0:
+                # El nombre del modelo es SIEMPRE la primera parte (índice 0)
+                model_name = parts[0].strip()
+                
+                # Validamos que no sea un encabezado ni esté vacío
+                if model_name and not any(word in model_name for word in ignore_list):
+                    models.append(model_name)
+        
+        return sorted(list(set(models)))
+    except Exception as e:
+        print(f"Error detectando modelos: {e}")
+        return []
